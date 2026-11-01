@@ -1,8 +1,57 @@
+import json
 import math
+from pathlib import Path
 
 import pytest
 
-from board import consume_rate_limit, insert_top, quantize_ghost, validate_run
+from board import (
+    _course_center_x,
+    consume_slot,
+    find_duplicate_rank,
+    insert_top,
+    quantize_ghost,
+    validate_run,
+)
+
+
+class MemoryStore(dict):
+    def put(self, key, value, skip_if_exists=False):
+        if skip_if_exists and key in self:
+            return False
+        self[key] = value
+        return True
+
+
+def _path(count, *, start_z=-6, finish_z=-901):
+    start_x = _course_center_x(start_z)
+    finish_x = _course_center_x(finish_z)
+    return [
+        [
+            start_x + (finish_x - start_x) * index / (count - 1),
+            0,
+            start_z + (finish_z - start_z) * index / (count - 1),
+            0,
+            0,
+        ]
+        for index in range(count)
+    ]
+
+
+def _extend_frames_to_z(frames, target_z):
+    start_z = frames[-1][2]
+    count = math.ceil(abs(target_z - start_z) / 0.5)
+    for step in range(1, count + 1):
+        z = start_z + (target_z - start_z) * step / count
+        frames.append([_course_center_x(z), 0, z, 0, 0])
+
+
+def _backtrack_respawn_frames(respawn_z, respawn_x, *, backtrack_z=-130):
+    frames = [[_course_center_x(-6), 0, -6, 0, 0]]
+    _extend_frames_to_z(frames, -150)
+    _extend_frames_to_z(frames, backtrack_z)
+    frames.append([respawn_x, 0, respawn_z, 0, 0])
+    _extend_frames_to_z(frames, -901)
+    return frames
 
 
 def valid_run(**overrides):
@@ -14,30 +63,45 @@ def valid_run(**overrides):
         "crashes": 1,
         "otterHits": 1,
         "maxAir": 1.4,
-        "ghost": {
-            "dt": 0.1,
-            "frames": [[0, 1.234, 2, 0, 0] for _ in range(280)],
-        },
+        "ghost": {"dt": 0.1, "frames": _path(280)},
     }
     run.update(overrides)
     return run
 
 
 def test_validate_run_normalizes_initials_and_quantizes_ghost():
-    run = validate_run(valid_run(name=" ab9 "))
+    body = valid_run(name=" ab9 ")
+    body["ghost"]["frames"][0][1] = 1.234
+    run = validate_run(body)
 
     assert run["name"] == "AB9"
-    assert run["ghost"]["frames"][0] == [0.0, 1.23, 2.0, 0.0, 0.0]
+    assert run["ghost"]["frames"][0] == [
+        round(_course_center_x(-6), 2),
+        1.23,
+        -6.0,
+        0.0,
+        0.0,
+    ]
     assert run["bonus"] == 0
 
 
 def test_validate_run_includes_bonus_in_simulated_ghost_duration():
     run = validate_run(valid_run(
         bonus=2,
-        ghost={"dt": 0.1, "frames": [[0, 0, 0, 0, 0] for _ in range(300)]},
+        ghost={"dt": 0.1, "frames": _path(300)},
     ))
 
     assert run["bonus"] == 2
+
+
+def test_validate_run_accepts_real_client_fixture_unchanged():
+    fixture_path = Path(__file__).parent / "fixtures" / "real_client_run.json"
+    with fixture_path.open() as fixture_file:
+        fixture = json.load(fixture_file)
+
+    run = validate_run(fixture)
+
+    assert run["ghost"] == fixture["ghost"]
 
 
 @pytest.mark.parametrize(
@@ -56,14 +120,146 @@ def test_validate_run_includes_bonus_in_simulated_ghost_duration():
         ({"extra": math.nan}, "extra"),
         ({"crashes": 0.5}, "whole numbers"),
         (
-            {"ghost": {"dt": 0.1, "frames": [[0, 0, 0, 0, 0] for _ in range(100)]}},
+            {"ghost": {"dt": 0.1, "frames": _path(100)}},
             "duration",
+        ),
+        (
+            {
+                "time": 20.01,
+                "penalties": 0,
+                "bonus": 0,
+                "ghost": {"dt": 20.01, "frames": [_path(2)[0]]},
+            },
+            "ghost.dt must be 0.1",
+        ),
+        (
+            {
+                "ghost": {"dt": 0.1, "frames": [_path(2)[0]]},
+            },
+            "duration",
+        ),
+        (
+            {
+                "time": 20.5,
+                "penalties": 0,
+                "ghost": {
+                    "dt": 0.1,
+                    "frames": [[_course_center_x(-6), 0, -6, 0, 0] for _ in range(205)],
+                },
+            },
+            "finish",
+        ),
+        (
+            {
+                "ghost": {"dt": 0.101, "frames": _path(280)},
+            },
+            "ghost.dt must be 0.1",
+        ),
+        (
+            {
+                "ghost": {"dt": 0.1, "frames": _path(280, finish_z=-500)},
+            },
+            "finish",
+        ),
+        (
+            {
+                "ghost": {"dt": 0.1, "frames": _path(280, start_z=-100)},
+            },
+            "start",
+        ),
+        (
+            {
+                "penalties": 29.99,
+                "ghost": {"dt": 0.1, "frames": []},
+            },
+            "start",
         ),
     ],
 )
 def test_validate_run_rejects_invalid_values(overrides, message):
     with pytest.raises(ValueError, match=message):
         validate_run(valid_run(**overrides))
+
+
+def test_validate_run_rejects_forward_jump_but_allows_backward_respawn():
+    forward_jump = _path(280)
+    forward_jump[140][2] = forward_jump[139][2] - 20
+    with pytest.raises(ValueError, match="faster"):
+        validate_run(valid_run(ghost={"dt": 0.1, "frames": forward_jump}))
+
+    respawn_path = _path(280)
+    respawn_index = 100
+    respawn_path[respawn_index][2] = respawn_path[respawn_index - 1][2] + 110
+    start_after_respawn = respawn_path[respawn_index][2]
+    finish_z = respawn_path[-1][2]
+    remaining_steps = len(respawn_path) - 1 - respawn_index
+    for index in range(respawn_index + 1, len(respawn_path)):
+        respawn_path[index][2] = start_after_respawn + (
+            finish_z - start_after_respawn
+        ) * (index - respawn_index) / remaining_steps
+
+    run = validate_run(valid_run(ghost={"dt": 0.1, "frames": respawn_path}))
+
+    backward_step = (
+        run["ghost"]["frames"][respawn_index][2]
+        - run["ghost"]["frames"][respawn_index - 1][2]
+    )
+    assert backward_step == pytest.approx(110)
+
+
+def test_validate_run_accepts_backtrack_then_checkpoint_respawn():
+    frames = _backtrack_respawn_frames(-150.4, _course_center_x(-150))
+
+    run = validate_run(valid_run(
+        time=len(frames) * 0.1,
+        penalties=0,
+        ghost={"dt": 0.1, "frames": frames},
+    ))
+
+    respawn_frame = next(frame for frame in run["ghost"]["frames"] if frame[2] == -150.4)
+    assert respawn_frame[0] == round(_course_center_x(-150), 2)
+
+
+def test_validate_run_rejects_forward_respawn_far_from_checkpoint():
+    frames = _backtrack_respawn_frames(
+        -160,
+        _course_center_x(-150),
+        backtrack_z=-139.6,
+    )
+
+    with pytest.raises(ValueError, match="ghost moves faster than the bike"):
+        validate_run(valid_run(
+            time=len(frames) * 0.1,
+            penalties=0,
+            ghost={"dt": 0.1, "frames": frames},
+        ))
+
+
+def test_validate_run_rejects_jump_from_start_to_finish_checkpoint():
+    start = [_course_center_x(-6), 0, -6, 0, 0]
+    frames = [start.copy() for _ in range(250)]
+    frames.append([_course_center_x(-900), 0, -900, 0, 0])
+
+    with pytest.raises(ValueError, match="ghost moves faster than the bike can"):
+        validate_run(valid_run(
+            time=len(frames) * 0.1,
+            penalties=0,
+            ghost={"dt": 0.1, "frames": frames},
+        ))
+
+
+def test_validate_run_rejects_jump_to_unreached_checkpoint():
+    frames = [[_course_center_x(-6), 0, -6, 0, 0]]
+    _extend_frames_to_z(frames, -140)
+    frames.append([_course_center_x(-300), 0, -300, 0, 0])
+    _extend_frames_to_z(frames, -901)
+
+    with pytest.raises(ValueError, match="ghost moves faster than the bike can"):
+        validate_run(valid_run(
+            time=len(frames) * 0.1,
+            penalties=0,
+            ghost={"dt": 0.1, "frames": frames},
+        ))
 
 
 def test_quantize_ghost_rejects_oversized_and_nonfinite_frames():
@@ -97,12 +293,44 @@ def test_insert_top_returns_existing_rank_for_duplicate_name_and_time():
 
     top, rank = insert_top(
         existing,
-        {"name": "Rider", "time": 30.0 + 0.5e-6, "penalties": 3, "topSpeed": 50},
+        {"name": "Rider", "time": 30.0, "penalties": 3, "topSpeed": 50},
         timestamp=100,
     )
 
     assert top == existing
     assert rank == 2
+
+
+def test_find_duplicate_rank_keeps_one_tick_improvements():
+    existing = [{"name": "YO", "time": 47.3083}]
+
+    assert find_duplicate_rank(
+        existing,
+        {"name": "YO", "time": 47.3083 - 1 / 120},
+    ) is None
+    assert find_duplicate_rank(existing, {"name": "YO", "time": 47.3083}) == 1
+
+
+def test_insert_top_accepts_legacy_entries_and_names():
+    existing = [
+        {
+            "name": "legacy lowercase rider",
+            "time": 31.0,
+            "penalties": 1,
+            "topSpeed": 40,
+            "ts": 1,
+        }
+    ]
+
+    top, rank = insert_top(
+        existing,
+        {"name": "New", "time": 30.0, "penalties": 0, "topSpeed": 42},
+        timestamp=2,
+    )
+
+    assert rank == 1
+    assert top[0]["name"] == "New"
+    assert top[1] == existing[0]
 
 
 def test_insert_top_keeps_same_name_with_different_time():
@@ -112,19 +340,51 @@ def test_insert_top_keeps_same_name_with_different_time():
 
     top, rank = insert_top(
         existing,
-        {"name": "Rider", "time": 31.0, "penalties": 0, "topSpeed": 42},
+        {"name": "Rider", "time": 30.5, "penalties": 0, "topSpeed": 42},
         timestamp=2,
     )
 
     assert len(top) == 2
     assert rank == 2
-    assert top[1]["time"] == 31.0
+    assert top[1]["time"] == 30.5
 
 
-def test_rate_limit_allows_thirty_runs_per_ip_per_hour():
-    store = {}
-    for _ in range(30):
-        assert consume_rate_limit(store, "192.0.2.1", 7200)
-    assert not consume_rate_limit(store, "192.0.2.1", 7200)
-    assert consume_rate_limit(store, "192.0.2.1", 10800)
-    assert consume_rate_limit(store, "192.0.2.2", 7200)
+def test_consume_slot_allows_exactly_the_limit():
+    store = MemoryStore()
+    for _ in range(3):
+        assert consume_slot(store, "test", 3)
+    assert not consume_slot(store, "test", 3)
+
+
+@pytest.mark.parametrize("hint", ["x", -1, 8, True])
+def test_consume_slot_ignores_garbage_hints_without_exceeding_limit(hint):
+    store = MemoryStore({"test:n": hint})
+
+    for _ in range(3):
+        assert consume_slot(store, "test", 3)
+    assert not consume_slot(store, "test", 3)
+
+
+def test_consume_slot_handles_two_callers_with_the_same_hint():
+    class RacingStore(dict):
+        hint_reads = 0
+
+        def get(self, key, default=None):
+            if key == "test:n" and self.hint_reads < 2:
+                self.hint_reads += 1
+                return 0
+            return super().get(key, default)
+
+        def put(self, key, value, skip_if_exists=False):
+            if skip_if_exists and key in self:
+                return False
+            self[key] = value
+            return True
+
+    store = RacingStore()
+
+    assert consume_slot(store, "test", 2)
+    assert consume_slot(store, "test", 2)
+    assert store["test:0"] == 1
+    assert store["test:1"] == 1
+    assert not consume_slot(store, "test", 2)

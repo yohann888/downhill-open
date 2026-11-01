@@ -76,4 +76,4 @@ Replace GLBs in `public/assets/models/` with files under the same names, or add 
 
 ## Security
 
-Never put provider keys in `VITE_` variables. If hosting the API, keep server-side run validation in `tools/api/board.py` and the daily TTS cap in `tools/api/modal_api.py`.
+Never put provider keys in `VITE_` variables. If hosting the API, keep the server-side run checks and per-client and daily commentary and TTS limits in sync with `tools/api/board.py` and `tools/api/modal_api.py`.
