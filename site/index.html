@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Downhill | Built with Devin</title>
+<meta name="description" content="A downhill mountain bike game built with Devin.">
+<style>
+  @font-face { font-family: 'Bungee'; src: url(bungee.woff2) format('woff2'); font-display: swap; }
+  @font-face { font-family: 'Press Start 2P'; src: url(press-start-2p.woff2) format('woff2'); font-display: swap; }
+  :root { color-scheme: dark; --pink: #ff2bd6; --cyan: #22e8ff; --gold: #ffe14a; --ink: #1a0638; --pix: 'Press Start 2P', monospace; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font: 500 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; color: #f3e9ff; overflow: hidden;
+    background: linear-gradient(180deg, #0b0221 0%, #2a0845 28%, #6b1470 46%, #d63a7a 60%, #ff8a3d 72%, #ffc35a 80%);
+  }
+  .sky { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+  .stars { position: absolute; inset: 0 0 40% 0;
+    background-image: radial-gradient(1.4px 1.4px at 12% 18%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 33% 8%, #ffd0f6 50%, transparent 51%), radial-gradient(1.6px 1.6px at 58% 22%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 74% 12%, #fff 50%, transparent 51%), radial-gradient(1.2px 1.2px at 90% 30%, #a8f4ff 50%, transparent 51%), radial-gradient(1px 1px at 22% 36%, #fff 50%, transparent 51%);
+    background-size: 420px 300px; animation: twinkle 4s ease-in-out infinite alternate; }
+  .sun { position: absolute; left: 50%; bottom: 30vh; width: 52vmin; height: 52vmin; margin-left: -26vmin; border-radius: 50%;
+    background: linear-gradient(180deg, #fff3a0 0%, #ffd23f 35%, #ff7a3d 65%, #ff2bd6 100%);
+    -webkit-mask: linear-gradient(180deg, #000 0 50%, transparent 50% 54%, #000 54% 62%, transparent 62% 67%, #000 67% 74%, transparent 74% 80%, #000 80% 86%, transparent 86% 93%, #000 93%);
+            mask: linear-gradient(180deg, #000 0 50%, transparent 50% 54%, #000 54% 62%, transparent 62% 67%, #000 67% 74%, transparent 74% 80%, #000 80% 86%, transparent 86% 93%, #000 93%);
+    filter: drop-shadow(0 0 40px rgba(255,90,160,.7)); animation: pulse 6s ease-in-out infinite; }
+  .ridge { position: absolute; left: 0; bottom: 0; width: 200%; background-repeat: repeat-x; background-size: 50% 100%; will-change: transform; animation: ride linear infinite; }
+  .r1 { height: 52vh; background-image: url(ridge-1.svg); animation-duration: 160s; opacity: .9; }
+  .r2 { height: 42vh; background-image: url(ridge-2.svg); animation-duration: 95s; }
+  .r3 { height: 30vh; background-image: url(ridge-3.svg); animation-duration: 55s; }
+  .r4 { height: 20vh; background-image: url(ridge-4.svg); animation-duration: 30s; }
+  .grid { position: absolute; left: -50%; right: -50%; bottom: 0; height: 18vh; transform: perspective(300px) rotateX(60deg); transform-origin: bottom;
+    background-image: linear-gradient(rgba(34,232,255,.55) 2px, transparent 2px), linear-gradient(90deg, rgba(34,232,255,.55) 2px, transparent 2px);
+    background-size: 60px 30px; animation: grid 1.2s linear infinite; -webkit-mask: linear-gradient(transparent, #000 60%); mask: linear-gradient(transparent, #000 60%); }
+  .scan { position: fixed; inset: 0; z-index: 3; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px); }
+  @keyframes ride { to { transform: translateX(-50%); } }
+  @keyframes grid { to { background-position: 0 30px; } }
+  @keyframes twinkle { to { opacity: .4; } }
+  @keyframes pulse { 50% { transform: scale(1.04); } }
+  @keyframes chase { to { background-position: 18px 0, 0 0; } }
+  @keyframes blink { 50% { opacity: .2; } }
+  @keyframes shine { 0%, 35% { background-position: 150% 0; } 75%, 100% { background-position: -50% 0; } }
+
+  main { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; }
+  .cabinet { --w: min(1120px, 88vw, calc((100vh - 220px) * 16 / 9)); width: calc(var(--w) + 56px); border-radius: 18px 18px 10px 10px; padding: 0 18px 0;
+    background: linear-gradient(180deg, #2b0c4e, #12042a); border: 3px solid #000;
+    box-shadow: 0 0 0 3px var(--pink), 0 0 40px rgba(255,43,214,.45), 0 40px 90px rgba(0,0,0,.6); }
+  .marquee { position: relative; margin: 0 -18px; height: 92px; display: flex; align-items: center; justify-content: center; gap: 22px; border-radius: 15px 15px 0 0; overflow: hidden;
+    background: radial-gradient(ellipse at 50% 120%, rgba(255,43,214,.55), transparent 60%), linear-gradient(180deg, #3a0f6b, #1a0638); border-bottom: 3px solid #000; }
+  .marquee::before, .marquee::after { content: ''; position: absolute; left: 0; right: 0; height: 6px;
+    background: radial-gradient(circle, var(--gold) 0 2px, transparent 2.5px) 0 0 / 18px 6px repeat-x, radial-gradient(circle, rgba(255,225,74,.25) 0 3px, transparent 3.5px) 0 0 / 9px 6px repeat-x; animation: chase .6s steps(2) infinite; }
+  .marquee::before { top: 4px; } .marquee::after { bottom: 4px; animation-direction: reverse; }
+  .presents { font: 9px/1.6 var(--pix); letter-spacing: .14em; color: var(--cyan); text-shadow: 0 0 8px var(--cyan); text-transform: none; writing-mode: horizontal-tb; }
+  .logo { position: relative; margin: 0; font: 54px/1 'Bungee', Impact, sans-serif; letter-spacing: .02em; transform: skewX(-8deg); }
+  .logo .fill, .logo::before, .logo::after { display: block; }
+  .logo::before { content: 'DOWNHILL'; position: absolute; inset: 0; color: var(--ink); -webkit-text-stroke: 3px var(--ink); text-shadow: 2px 2px 0 #5b1cff, 4px 4px 0 #5b1cff, 6px 6px 0 #2d0c8c, 8px 9px 12px rgba(0,0,0,.6); }
+  .logo .fill { position: relative; background: linear-gradient(180deg, #fffbe0 0%, #ffe14a 26%, #ff9a1f 50%, var(--pink) 51%, #ff5ae0 74%, #ffd0f6 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-stroke: 1.5px var(--ink); filter: drop-shadow(0 0 12px rgba(255,43,214,.5)); }
+  .logo::after { content: 'DOWNHILL'; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.95) 50%, transparent 58%) 0 0 / 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 4s ease-in-out infinite; }
+  .tag { font: 9px/1.6 var(--pix); letter-spacing: .1em; text-transform: uppercase; color: #fff; padding: 6px 10px; background: linear-gradient(90deg, #5b1cff, var(--pink)); transform: skewX(-12deg); box-shadow: 3px 3px 0 #000; }
+  .bezel { margin: 14px 0; padding: 10px; border-radius: 14px; background: linear-gradient(145deg, #0a0a12, #26213a); box-shadow: inset 0 0 0 2px #000, inset 0 4px 12px rgba(255,255,255,.08); }
+  .frame { width: var(--w); aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; background: #000; box-shadow: 0 0 0 2px #000, 0 0 24px rgba(34,232,255,.35); }
+  .frame iframe { display: block; width: 100%; height: 100%; border: 0; }
+  .panel { margin: 0 -18px; padding: 12px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 3px solid #000; border-radius: 0 0 8px 8px;
+    background: linear-gradient(180deg, #3a0f6b, #1a0638); }
+  .coin { font: 10px/1.6 var(--pix); color: var(--gold); text-transform: uppercase; letter-spacing: .08em; animation: blink 1.2s steps(2, start) infinite; }
+  .badge { display: inline-flex; align-items: center; padding: 6px 16px; border-radius: 999px; color: #fff; text-decoration: none;
+    background: #0b0221; border: 2px solid var(--cyan); box-shadow: 0 0 14px rgba(34,232,255,.4); transition: transform .2s, box-shadow .2s; }
+  .badge:hover { transform: translateY(-2px); box-shadow: 0 0 22px rgba(34,232,255,.7); }
+  .badge span { font: 9px/1.6 var(--pix); }
+  .creator-credits { flex: 1 1 300px; max-width: 520px; font: 7px/1.8 var(--pix); color: #dceaff; text-align: center; overflow-wrap: anywhere; }
+  .creator-credits a { color: var(--cyan); text-decoration: none; }
+  .creator-credits a:hover { color: var(--gold); text-decoration: underline; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; background: none; border: 0; padding: 0; cursor: pointer; color: #fff; font: 9px/1.6 var(--pix); text-transform: uppercase; }
+  .btn i { width: 34px; height: 34px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ff9ae9, var(--pink) 55%, #9a0a7c); box-shadow: 0 4px 0 #5a0448, 0 0 14px rgba(255,43,214,.6); transition: transform .1s, box-shadow .1s; }
+  .btn:active i { transform: translateY(3px); box-shadow: 0 1px 0 #5a0448; }
+  .credit { margin-top: 12px; font: 8px/1.6 var(--pix); letter-spacing: .12em; text-transform: uppercase; color: #ffd0f6; text-shadow: 0 1px 0 #000; }
+  .credit a { color: inherit; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } }
+  @media (max-width: 760px) {
+    main { justify-content: flex-start; padding: 8px; }
+    .cabinet { --w: calc(100vw - 52px); width: 100%; flex: 1; display: flex; flex-direction: column; }
+    .marquee { height: 64px; gap: 10px; } .presents, .tag, .coin { display: none; } .logo { font-size: 36px; }
+    .bezel { flex: 1; display: flex; margin: 10px 0; padding: 6px; } .frame { flex: 1; aspect-ratio: auto; width: 100%; }
+    .panel { justify-content: center; flex-wrap: wrap; } .creator-credits { flex: 1 1 100%; max-width: none; font-size: 6px; } #fs { display: none; } .credit { display: none; }
+  }
+  @media (max-width: 600px) {
+    html, body { height: auto; min-height: 100%; overflow-x: hidden; overflow-y: auto; touch-action: auto; }
+    main { height: auto; min-height: 100dvh; padding: 0; }
+    .cabinet { --w: 100vw; width: 100%; flex: none; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+    .marquee { order: 3; margin: 0; border-radius: 0; }
+    .bezel { order: 1; flex: none; margin: 0; padding: 0; border-radius: 0; background: none; box-shadow: none; }
+    .frame { width: 100vw; height: calc(100svh - 44px); height: calc(100dvh - 44px); flex: none; aspect-ratio: auto; border-radius: 0; box-shadow: none; }
+    .panel { order: 2; margin: 0; border-radius: 0; touch-action: auto; }
+    .coin, #fs { display: none; }
+    .creator-credits { font-size: 7px; }
+    .credit { display: block; margin: 12px 16px 20px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+<div class="sky" aria-hidden="true">
+  <div class="stars"></div>
+  <div class="sun"></div>
+  <div class="ridge r1"></div>
+  <div class="ridge r2"></div>
+  <div class="ridge r3"></div>
+  <div class="ridge r4"></div>
+  <div class="grid"></div>
+</div>
+<div class="scan" aria-hidden="true"></div>
+<main>
+  <div class="cabinet">
+    <header class="marquee">
+      <span class="presents">devkick<br>presents</span>
+      <h1 class="logo"><span class="fill">DOWNHILL</span></h1>
+      <span class="tag">Mountain bike mayhem</span>
+    </header>
+    <div class="bezel">
+      <div class="frame">
+        <iframe id="game" src="play/" title="Downhill game" allow="autoplay; fullscreen; gamepad; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </div>
+    <footer class="panel">
+      <span class="coin">Free play</span>
+      <a class="badge" href="https://devin.ai" target="_blank" rel="noopener">
+        <span>Built with Devin</span>
+      </a>
+      <span class="creator-credits">3D models by <a href="https://www.meshy.ai" target="_blank" rel="noopener">Meshy</a> &middot; Music, sound and voice by <a href="https://elevenlabs.io" target="_blank" rel="noopener">ElevenLabs</a> &middot; Rider and sky by <a href="https://rosebud.ai" target="_blank" rel="noopener">Rosebud AI</a> &middot; Leaderboard and AI commentary on <a href="https://modal.com" target="_blank" rel="noopener">Modal</a></span>
+      <button id="fs" class="btn" type="button"><i></i>Fullscreen</button>
+    </footer>
+  </div>
+  <p class="credit">A game jam build</p>
+</main>
+<script>
+  const game = document.getElementById('game');
+  game.addEventListener('load', () => game.focus());
+  function toggleFullscreen() {
+    const fullscreenPromise = document.fullscreenElement
+      ? document.exitFullscreen()
+      : game.requestFullscreen?.();
+    fullscreenPromise?.then(() => {
+      if (document.fullscreenElement === game) game.focus();
+    }).catch(() => {});
+  }
+  document.getElementById('fs').addEventListener('click', toggleFullscreen);
+  window.addEventListener('keydown', (event) => {
+    if (
+      event.code !== 'KeyF'
+      || event.repeat
+      || event.ctrlKey
+      || event.metaKey
+      || event.altKey
+    ) return;
+    const target = event.target;
+    if (target instanceof Element
+      && target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+    event.preventDefault();
+    toggleFullscreen();
+  });
+</script>
+</body>
+</html>

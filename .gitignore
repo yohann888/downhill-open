@@ -1,0 +1,8 @@
+node_modules
+dist
+.rosebud/
+/tools/assets/raw/
+__pycache__/
+site-dist
+.env*
+!.env.example
