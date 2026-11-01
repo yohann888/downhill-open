@@ -129,6 +129,9 @@ To add a custom server in Devin, an organization admin can open **Customize > MC
 
 ## License and assets
 
-The code is licensed under MIT. See [LICENSE](LICENSE).
+- Code: MIT. See [LICENSE](LICENSE).
+- Assets in `public/assets/` (models, textures, sky, images, music, sound and voice): all rights reserved. You can run and modify this game with them, but not reuse them in other projects. See [LICENSE-ASSETS.md](LICENSE-ASSETS.md).
+- Credits: models made with Meshy and Rosebud, sky made with Rosebud, audio Created with ElevenLabs, ground textures from ambientCG (CC0).
+- The Devin name, logo and otter mascot belong to Cognition.
 
-Generated assets from Meshy, ElevenLabs, and Rosebud are included for use with this game. Check each service's terms before reusing them elsewhere. The Devin name and logo belong to Cognition.
+To make your own assets you can reuse anywhere, run the scripts in `tools/` with your own Meshy, ElevenLabs and Rosebud accounts and check each service's terms.
