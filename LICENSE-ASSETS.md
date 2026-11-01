@@ -22,7 +22,7 @@ If you want to reuse an asset elsewhere, generate your own with the scripts in `
 - 3D models: generated with [Meshy](https://www.meshy.ai). Some models started as [Rosebud](https://rosebud.ai) generations and were refined with Meshy (see `tools/assets/manifest.json`).
 - Sky: generated with [Rosebud](https://rosebud.ai).
 - Music, sound effects and voice lines: Created with [ElevenLabs](https://elevenlabs.io). The commentary uses ElevenLabs' premade voice "Liam".
-- Ground textures (grass, trail, rock): [ambientCG](https://ambientcg.com) (Grass004, Ground107, Rock064), licensed CC0 1.0. These three textures are public domain and are not covered by the restrictions above.
+- Ground textures (grass, trail, rock): [ambientCG](https://ambientcg.com) (Grass004, Ground107, Rock030), licensed CC0 1.0. These three textures are public domain and are not covered by the restrictions above.
 
 ## Trademarks
 
