@@ -2,7 +2,15 @@ import math
 
 import pytest
 
-from board import consume_rate_limit, insert_top, quantize_ghost, validate_run
+from board import consume_slot, insert_top, quantize_ghost, validate_run
+
+
+class MemoryStore(dict):
+    def put(self, key, value, skip_if_exists=False):
+        if skip_if_exists and key in self:
+            return False
+        self[key] = value
+        return True
 
 
 def valid_run(**overrides):
@@ -121,10 +129,42 @@ def test_insert_top_keeps_same_name_with_different_time():
     assert top[1]["time"] == 31.0
 
 
-def test_rate_limit_allows_thirty_runs_per_ip_per_hour():
-    store = {}
-    for _ in range(30):
-        assert consume_rate_limit(store, "192.0.2.1", 7200)
-    assert not consume_rate_limit(store, "192.0.2.1", 7200)
-    assert consume_rate_limit(store, "192.0.2.1", 10800)
-    assert consume_rate_limit(store, "192.0.2.2", 7200)
+def test_consume_slot_allows_exactly_the_limit():
+    store = MemoryStore()
+    for _ in range(3):
+        assert consume_slot(store, "test", 3)
+    assert not consume_slot(store, "test", 3)
+
+
+@pytest.mark.parametrize("hint", ["x", -1, 8, True])
+def test_consume_slot_ignores_garbage_hints_without_exceeding_limit(hint):
+    store = MemoryStore({"test:n": hint})
+
+    for _ in range(3):
+        assert consume_slot(store, "test", 3)
+    assert not consume_slot(store, "test", 3)
+
+
+def test_consume_slot_handles_two_callers_with_the_same_hint():
+    class RacingStore(dict):
+        hint_reads = 0
+
+        def get(self, key, default=None):
+            if key == "test:n" and self.hint_reads < 2:
+                self.hint_reads += 1
+                return 0
+            return super().get(key, default)
+
+        def put(self, key, value, skip_if_exists=False):
+            if skip_if_exists and key in self:
+                return False
+            self[key] = value
+            return True
+
+    store = RacingStore()
+
+    assert consume_slot(store, "test", 2)
+    assert consume_slot(store, "test", 2)
+    assert store["test:0"] == 1
+    assert store["test:1"] == 1
+    assert not consume_slot(store, "test", 2)

@@ -9,6 +9,11 @@ from typing import Any
 MAX_FRAMES = 6000
 TOP_SIZE = 50
 RUNS_PER_IP_HOUR = 30
+RUNS_GLOBAL_HOUR = 1000
+COMMENTARY_PER_IP_HOUR = 120
+COMMENTARY_GLOBAL_DAY = 5000
+TTS_PER_IP_DAY = 20
+TTS_GLOBAL_DAY = 80
 _NAME_PATTERN = re.compile(r"[A-Z0-9]{1,3}\Z")
 _RUN_NUMBER_FIELDS = ("time", "penalties", "bonus", "topSpeed", "crashes", "otterHits", "maxAir")
 
@@ -141,14 +146,16 @@ def find_duplicate_rank(
     return None
 
 
-def consume_rate_limit(store: Any, ip: str, now: float) -> bool:
-    key = f"rl:{ip}:{int(now // 3600)}"
-    count = store.get(key, 0)
-    if isinstance(count, bool) or not isinstance(count, int) or count >= RUNS_PER_IP_HOUR:
-        return False
-    next_count = count + 1
-    if hasattr(store, "put"):
-        store.put(key, next_count)
-    else:
-        store[key] = next_count
-    return True
+def consume_slot(store: Any, key: str, limit: int) -> bool:
+    hint = store.get(f"{key}:n", 0)
+    # The hint is only an optimization; claimed slots provide atomicity.
+    start = (
+        hint
+        if isinstance(hint, int) and not isinstance(hint, bool) and 0 <= hint <= limit
+        else 0
+    )
+    for slot in range(start, limit):
+        if store.put(f"{key}:{slot}", 1, skip_if_exists=True):
+            store.put(f"{key}:n", slot + 1)
+            return True
+    return False

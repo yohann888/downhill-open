@@ -90,7 +90,7 @@ modal secret create downhill-api GEMINI_API_KEY="$GEMINI_API_KEY" ELEVENLABS_API
 modal deploy tools/api/modal_api.py
 ```
 
-Set `VITE_API_BASE` to the deployed API URL when building the site. `GEMINI_API_KEY` enables commentary text; `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` enable commentary audio. The API returns text without audio if the voice key or ID is unset, and limits audio generation to 80 requests per day.
+Set `VITE_API_BASE` to the deployed API URL when building the site. `GEMINI_API_KEY` enables commentary text; `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` enable commentary audio. The API returns text without audio if the voice key or ID is unset; per-client and daily caps on commentary and runs live in `tools/api/board.py`.
 
 ```sh
 VITE_API_BASE="https://<your-modal-app>.modal.run" npm run build:site
@@ -113,7 +113,7 @@ See [BUILD-ON-IT.md](BUILD-ON-IT.md) for the code map, tuning points, recipes, a
 
 ## Security
 
-Never put provider keys in `VITE_` variables. If hosting the API, keep the server-side run checks in `tools/api/board.py` and the daily text-to-speech cap in `tools/api/modal_api.py`.
+Never put provider keys in `VITE_` variables. If hosting the API, keep the server-side run checks and the commentary and text-to-speech limits in `tools/api/board.py`.
 
 ## Using MCP servers
 
