@@ -68,7 +68,16 @@ A fork can change the prompts and voice settings in `tools/assets/manifest.json`
 
 ### Rosebud AI
 
-The site credit reads “Rider and sky by Rosebud AI.” The manifest also identifies `rider-body` and `bike-frame` as `Rosebud rosie-3d` sources. Rosebud was used through its web app.
+Rosebud generated the sky texture and the first rider and bike models (`rider-body` and `bike-frame` in the manifest are marked `Rosebud rosie-3d`). Devin called Rosebud's developer asset API after a one-time login, following Rosebud's [asset instructions](https://rosebud.ai/developer-assets/AGENTS.md). Early builds were also published to rosebud.ai/play with the Rosebud CLI:
+
+```sh
+npm install -g @rosebudai/cli
+npm run build
+rosebud publish --directory ./dist --title "My Downhill" --description "A downhill bike game"
+rosebud update --directory ./dist
+```
+
+The game is now hosted on Cloudflare Pages instead. Rosebud is optional for forks.
 
 ### Modal
 
@@ -108,7 +117,7 @@ Never put provider keys in `VITE_` variables. If hosting the API, keep the serve
 
 ## Using MCP servers
 
-This repo calls Meshy and ElevenLabs through REST APIs from Modal scripts; MCP servers are an alternative way to drive the same tools from an agent like Devin during development. MCP servers are optional and are not needed at game runtime.
+This repo uses all of these tools, but through their APIs and CLIs, not through MCP: Meshy and ElevenLabs from Modal scripts, Rosebud through its CLI and asset API, and Modal as the place those scripts and the game API run. MCP servers are an alternative way to drive the same tools from an agent like Devin during development. MCP servers are optional and are not needed at game runtime.
 
 - Meshy publishes `@meshy-ai/meshy-mcp-server`. Its setup uses the `MESHY_API_KEY` environment variable. One documented install command is `npx add-mcp @meshy-ai/meshy-mcp-server --env MESHY_API_KEY=your-key`. See [Meshy API docs](https://docs.meshy.ai/en/api/ai).
 - ElevenLabs offers a hosted MCP endpoint at `https://api.elevenlabs.io/v1/mcp`. It uses OAuth and needs no local install. The hosted server is for managing ElevenLabs agents. The older [local audio MCP server](https://github.com/elevenlabs/elevenlabs-mcp-server) is deprecated. See the [hosted MCP docs](https://elevenlabs.io/docs/eleven-agents/operate/hosted-mcp).
