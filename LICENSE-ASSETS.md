@@ -7,7 +7,7 @@ This file covers everything in `public/assets/`: 3D models, textures, the sky im
 ## What you can do
 
 - Download, build and run this game, including modified versions of it.
-- Use these assets inside your own fork of this game, shared as source code or as a playable build, as long as you keep this file and the credits below.
+- Use these assets inside your own fork of this game, shared as source code or as a playable build. Source copies must keep this file. Playable builds must keep the in-game credits line (Meshy, ElevenLabs, Rosebud) or link to this file.
 
 ## What you can't do
 
