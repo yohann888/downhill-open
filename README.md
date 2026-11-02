@@ -4,6 +4,22 @@ Downhill is a 3D downhill biking game for the browser. Ride a procedural mountai
 
 Play it at [devkick.com/downhill](https://devkick.com/downhill/).
 
+## By the numbers
+
+Measured on v1.21:
+
+- **Download:** 16.1 MB total, about 15.5 MB over the wire
+  - 3D models: 7.0 MB (14 GLB files from Meshy)
+  - Audio: 6.0 MB (24 MP3s from ElevenLabs)
+  - Textures and sky: 2.2 MB
+  - Game code: one 794 KB JavaScript file, 210 KB gzipped
+- **Runtime dependencies:** Three.js only, no game engine
+- **Code:** about 11,300 lines (7,000 game, 2,100 tests, 2,100 tools for the asset pipeline and Modal API)
+- **Tests:** 99 game tests and 70 API tests
+- **Course:** 900 m with 5 jump ramps, 6 checkpoints, 154 trees, 11 rocks, 6 stumps and 4 logs, plus otters and pickups
+- **Content:** 2 riders, 5 music tracks plus YouTube, day and night, rain weather
+- **Build time:** 4 days with Devin (Oct 29 to Nov 1, 2026), 135 commits and 23 merged PRs in the development repo
+
 ## Run locally
 
 ```sh
