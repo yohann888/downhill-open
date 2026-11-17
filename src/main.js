@@ -51,7 +51,7 @@ let timeMode = ['day', 'night'].includes(requestedTime)
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(
-  initialQuality >= 3 ? 0.75 : initialQuality >= 2 ? 1 : Math.min(window.devicePixelRatio, 2),
+  initialQuality >= 3 ? 0.75 : Math.min(window.devicePixelRatio, 2),
 );
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = initialQuality < 2;
